@@ -1,0 +1,129 @@
+// Prisma schema for Kalaso Predictions
+// Ready for Superbase / PostgreSQL deployment
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  HT
+  FT
+  FINISHED
+  POSTPONED
+  CANCELLED
+}
+
+enum PredictionResult {
+  PENDING
+  WON
+  LOST
+  VOID
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  name         String
+  email        String       @unique
+  phone        String
+  passwordHash String       @map("password_hash")
+  role         Role         @default(USER)
+  status       UserStatus   @default(ACTIVE)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  predictions  Prediction[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Prediction {
+  id           Int              @id @default(autoincrement())
+  league       String
+  homeTeam     String           @map("home_team")
+  awayTeam     String           @map("away_team")
+  prediction   String
+  odds         String
+  matchDate    String           @map("match_date")
+  matchTime    String           @map("match_time")
+  status       MatchStatus      @default(SCHEDULED)
+  result       PredictionResult @default(PENDING)
+  correctScore String?          @map("correct_score")
+  confidence   Int?             @default(85)
+  category     String?          @default("FREE_TIP")
+  notes        String?
+  isFeatured   Boolean          @default(false) @map("is_featured")
+  createdBy    Int?             @map("created_by")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  creator      User?            @relation(fields: [createdBy], references: [id])
+  liveMatches  LiveMatch[]
+
+  @@map("predictions")
+}
+
+model LiveMatch {
+  id             Int         @id @default(autoincrement())
+  league         String
+  homeTeam       String      @map("home_team")
+  awayTeam       String      @map("away_team")
+  homeScore      Int         @default(0) @map("home_score")
+  awayScore      Int         @default(0) @map("away_score")
+  matchMinute    String      @default("1'") @map("match_minute")
+  status         MatchStatus @default(LIVE)
+  matchDate      String      @map("match_date")
+  matchTime      String      @map("match_time")
+  predictionId   Int?        @map("prediction_id")
+  predictionText String?     @map("prediction_text")
+  odds           String?
+  liveCommentary String?     @map("live_commentary")
+  isPublished    Boolean     @default(true) @map("is_published")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  prediction     Prediction? @relation(fields: [predictionId], references: [id])
+
+  @@map("live_matches")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  userEmail String?  @map("user_email")
+  action    String
+  details   String?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}

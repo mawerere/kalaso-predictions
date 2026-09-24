@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.env*
+!.env.example
+*.tsbuildinfo
+
+# Local tooling and OS files
+.DS_Store
+.vscode/
